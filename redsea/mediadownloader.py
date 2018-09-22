@@ -8,9 +8,11 @@ import sys
 import requests
 
 from .decryption import decrypt_file, decrypt_security_token
+from .flac import recompress_flac
 from .tagger import FeaturingFormat
 from .tidal_api import TidalApi, TidalRequestError
 
+from config.settings import RECOMPRESS
 
 def _mkdir_p(path):
     try:
@@ -171,9 +173,13 @@ class MediaDownloader(object):
         temp_file = self._dl_url(stream_data['url'], track_path)
 
         if not stream_data['encryptionKey'] == '':
-            print('\tLooks like file is encrypted. Decrypting...')
+            print('\tLooks like the file is encrypted. Decrypting...')
             key, nonce = decrypt_security_token(stream_data['encryptionKey'])
             decrypt_file(temp_file, key, nonce)
+
+        if RECOMPRESS:
+            print('\tRecompressing flac to level 8...')
+            recompress_flac(temp_file, 8)
 
         aa_location = path.join(album_location, 'Cover.jpg')
         if not path.isfile(aa_location):
