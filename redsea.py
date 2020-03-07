@@ -83,6 +83,7 @@ def main():
 
     # Loop through media and download if possible
     cm = 0
+    failed = []
     for mt in media_to_download:
 
         # Is it an acceptable media type? (skip if not)
@@ -112,7 +113,16 @@ def main():
                         lines = media['content'].split('\n')
                         for i, l in enumerate(lines):
                             print('Getting info for track {}/{}'.format(i, len(lines)), end='\r')
-                            tracks.append(md.api.get_track(l))
+                            try:
+                                tracks.append(md.api.get_track(l))
+                            # Catch region error
+                            except TidalError as e:
+                                if 'not found. This might be region-locked.' in str(e) and BRUTEFORCE:
+                                    print()
+                                    print(e)
+                                    continue
+                                else:
+                                    raise
                         print()
 
 
@@ -224,7 +234,7 @@ def main():
                 MEDIA_TYPES[mt['type']] + (' ' + media_name if media_name else ''), total))
 
 
-        if args.resumeon and len(media_to_download) == 1 and mt['type'] == 'p':
+        if args.resumeon and len(media_to_download) == 1 and (mt['type'] == 'p' or mt['type'] == 'f'):
             print('<<< Resuming on track {} >>>'.format(args.resumeon))
             args.resumeon -= 1
         else:
@@ -280,6 +290,12 @@ def main():
                         else:
                             print(str(e) + '. Skipping..')
 
+                    except TidalError as e:
+                        print('Failed to download track. Skipping.')
+                        failed.append(track)
+                        break
+
+
                 # Progress of current track
                 cur += 1
                 print('=== {0}/{1} complete ({2:.0f}% done) ===\n'.format(
@@ -291,6 +307,10 @@ def main():
                     (cm / len(media_to_download)) * 100))
 
     print('> All downloads completed. <')
+    if len(failed):
+        print("\n> Failed Downloads: <")
+        for t in failed:
+            print(t)
 
 
 # Run from CLI - catch Ctrl-C and handle it gracefully

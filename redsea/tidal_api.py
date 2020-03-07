@@ -60,10 +60,10 @@ class TidalApi(object):
 
         if 'status' in resp_json and resp_json['status'] == 404 and resp_json['subStatus'] == 2001:
             raise TidalError('Error: {}. This might be region-locked.'.format(resp_json['userMessage']))
-        
+
         if 'status' in resp_json and not resp_json['status'] == 200:
             raise TidalRequestError(resp_json)
-        
+
         return resp_json
 
     def get_stream_url(self, track_id, quality):
@@ -278,7 +278,7 @@ class TidalSessionFile(object):
 
         if session_name is None:
             session_name = self.default
-        
+
         if session_name in self.sessions:
             assert self.sessions[session_name].valid(), '{} has an invalid sessionId. Please re-authenticate'.format(session_name)
             return self.sessions[session_name]
@@ -287,7 +287,7 @@ class TidalSessionFile(object):
 
     def set_default(self, session_name):
         '''
-        Set a default session to return when 
+        Set a default session to return when
         load() is called without a session name
         '''
 
