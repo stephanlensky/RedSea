@@ -31,11 +31,33 @@ LOGO = """
 
 MEDIA_TYPES = {'t': 'track', 'p': 'playlist', 'a': 'album', 'f':'album', 'r': 'artist', 'f': 'file'}
 
-def main():
-    os.chdir(sys.path[0])
+def main_with_args():
     # Get args
     args = cli.get_args()
+    os.chdir(sys.path[0])
+    main(args)
 
+
+def redsea_musicutil_integration(tmpfile_path, config):
+    class Namespace:
+        def __init__(self, **kwargs):
+            self.__dict__.update(kwargs)
+    PRESETS['musicutil'] = config
+    args = Namespace(
+        account='',
+        bruteforce=False,
+        file=True,
+        overwrite=False,
+        preset='musicutil',
+        resumeon=None,
+        skip=False,
+        urls=[tmpfile_path]
+    )
+    os.chdir('RedSea')
+    main(args)
+
+
+def main(args):
     # Check for auth flag / session settings
     RSF = RedseaSessionFile('./config/sessions.pk')
     if args.urls[0] == 'auth' and len(args.urls) == 1:
@@ -316,7 +338,7 @@ def main():
 # Run from CLI - catch Ctrl-C and handle it gracefully
 if __name__ == '__main__':
     try:
-        main()
+        main_with_args()
     except KeyboardInterrupt:
         print('\n^C pressed - abort')
         exit()
