@@ -186,6 +186,18 @@ def main(args, tracks=None):
                                     print('\tSkipping ' + album['title'])
                                     continue
 
+                            # remove sony 360 reality audio albums if there's another (duplicate) album that isn't 360 reality audio
+                            if 'skip_360ra' in preset and preset['skip_360ra']:
+                                if 'SONY_360RA' in album['audioModes']:
+                                    is_duplicate = False
+                                    for a2 in albums:
+                                        if album['title'] == a2['title'] and album['numberOfTracks'] == a2['numberOfTracks']:
+                                            is_duplicate = True
+                                            break
+                                    if is_duplicate:
+                                        print('\tSkipping duplicate Sony 360 Reality Audio album - ' + album['title'])
+                                        continue
+
                             # Get album information
                             media_info = md.api.get_album(album['id'])
 
@@ -272,7 +284,7 @@ def main(args, tracks=None):
                 # Actually download the track (finally)
                 while True:
                     try:
-                        md.download_media(track, preset['quality'], media_info)
+                        md.download_media(track, preset['quality'], media_info, overwrite=args.overwrite)
                         break
 
                     # Catch quality error
@@ -334,6 +346,9 @@ def main(args, tracks=None):
         print("\n> Failed Downloads: <")
         for t in failed:
             print(t)
+
+    # since oauth sessions can change while downloads are happening if the token gets refreshed
+    RSF._save()
 
 
 # Run from CLI - catch Ctrl-C and handle it gracefully
