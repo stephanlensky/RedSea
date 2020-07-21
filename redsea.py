@@ -38,7 +38,7 @@ def main_with_args():
     main(args)
 
 
-def redsea_musicutil_integration(tmpfile_path, config):
+def redsea_musicutil_integration(tracks, config):
     class Namespace:
         def __init__(self, **kwargs):
             self.__dict__.update(kwargs)
@@ -46,18 +46,17 @@ def redsea_musicutil_integration(tmpfile_path, config):
     args = Namespace(
         account='',
         bruteforce=False,
-        file=True,
         overwrite=False,
         preset='musicutil',
         resumeon=None,
         skip=False,
-        urls=[tmpfile_path]
+        urls=['']
     )
     os.chdir('RedSea')
-    main(args)
+    main(args, tracks=tracks)
 
 
-def main(args):
+def main(args, tracks=None):
     # Check for auth flag / session settings
     RSF = RedseaSessionFile('./config/sessions.pk')
     if args.urls[0] == 'auth' and len(args.urls) == 1:
@@ -101,7 +100,9 @@ def main(args):
     preset['quality'].append('LOSSLESS') if preset['FLAC_16'] else None
     preset['quality'].append('HIGH') if preset['AAC_320'] else None
     preset['quality'].append('LOW') if preset['AAC_96'] else None
-    media_to_download = cli.parse_media_option(args.urls, args.file)
+    media_to_download = cli.parse_media_option(args.urls, args.file) if tracks is None else [{
+        'type': 'f'
+    }]
 
     # Loop through media and download if possible
     cm = 0
@@ -238,7 +239,7 @@ def main(args):
                         raise(e)
 
         try:
-            media_name, track_info = get_tracks(media=mt)
+            media_name, track_info = get_tracks(media=mt) if tracks is None else (None, [(tracks, None)])
         except StopIteration:
             # Let the user know we cannot download this release and skip it
             print('None of the available accounts were able to get info for release {}. Skipping..'.format(mt['id']))

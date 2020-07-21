@@ -39,7 +39,7 @@ class MediaDownloader(object):
 
         self.session.mount('http://', HTTPAdapter(max_retries=retries))
         self.session.mount('https://', HTTPAdapter(max_retries=retries))
-        
+
 
     def _dl_url(self, url, where):
         r = self.session.get(url, stream=True)
@@ -88,6 +88,28 @@ class MediaDownloader(object):
 
             info['artist'] = self._sanitise_name(self.featform.get_artist_format(artists))
         return info
+
+    def _get_album_path(self, base, album_format, track_info, album_info):
+        album_location = path.join(
+            base, album_format.format(
+                **self._normalise_info(track_info, album_info, True))).strip()
+        album_location = re.sub(r'\.+$', '', album_location)
+        return album_location
+
+    def _get_track_file(self, track_format, track_info, album_info):
+        track_file = track_format.format(
+            **self._normalise_info(track_info, album_info)).strip()
+        if len(track_file) > 255: # trim filename to be under OS limit (and account for file extension)
+            track_file = track_file[:250 - len(track_file)]
+        track_file = re.sub(r'\.+$', '', track_file)
+        return track_file
+
+    def _get_disc_path(self, album_location, volume_number):
+        disc_location = path.join(
+                album_location,
+                'CD{num}'.format(num=volume_number))
+        disc_location = re.sub(r'\.+$', '', disc_location)
+        return disc_location
 
     def get_stream_url(self, track_id, quality):
         tries = self.opts['tries']
@@ -138,7 +160,7 @@ class MediaDownloader(object):
     def download_media(self, track_info, quality, album_info=None):
         track_id = track_info['id']
         assert track_info['allowStreaming'], 'Unable to download track {0}: not allowed to stream/download'.format(track_id)
-        
+
         print('=== Downloading track ID {0} ==='.format(track_id))
 
         if album_info is None:
@@ -156,22 +178,12 @@ class MediaDownloader(object):
 
 
         # Make locations
-        album_location = path.join(
-            self.opts['path'], self.opts['album_format'].format(
-                **self._normalise_info(track_info, album_info, True))).strip()
-        album_location = re.sub(r'\.+$', '', album_location)
-        track_file = self.opts['track_format'].format(
-            **self._normalise_info(track_info, album_info)).strip()
-        if len(track_file) > 255: # trim filename to be under OS limit (and account for file extension)
-            track_file = track_file[:250 - len(track_file)]
-        track_file = re.sub(r'\.+$', '', track_file)
+        album_location = self._get_album_path(self.opts['path'], self.opts['album_format'], track_info, album_info)
+        track_file = self._get_track_file(self.opts['track_format'], track_info, album_info)
         _mkdir_p(album_location)
         # Make multi disc directories
         if album_info['numberOfVolumes'] > 1:
-            disc_location = path.join(
-                album_location,
-                'CD{num}'.format(num=track_info['volumeNumber']))
-            disc_location = re.sub(r'\.+$', '', disc_location)
+            disc_location = self._get_disc_path(album_location, track_info['volumeNumber'])
             _mkdir_p(disc_location)
 
         # Attempt to get stream URL
@@ -196,13 +208,12 @@ class MediaDownloader(object):
         else:
             track_path = path.join(album_location, track_file + '.' + ftype)
 
-        
 
         if path.isfile(track_path):
             print('\tFile {} already exists, skipping.'.format(track_path))
             return None
 
-        
+
         self.print_track_info(track_info, album_info)
 
         try:
@@ -234,11 +245,11 @@ class MediaDownloader(object):
                 os.remove(aa_location)
 
             return (album_location, temp_file)
-        
+
         # Delete partially downloaded file on keyboard interrupt
         except KeyboardInterrupt:
             if path.isfile(track_path):
                 print('Deleting partially downloaded file ' + str(track_path))
                 os.remove(track_path)
             raise
-                
+
